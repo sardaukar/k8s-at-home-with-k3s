@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f bookstack-original-compose.yaml
+    kompose.version: 1.24.0 (HEAD)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: bookstack
+  name: bookstack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: bookstack
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f bookstack-original-compose.yaml
+        kompose.version: 1.24.0 (HEAD)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: bookstack
+    spec:
+      containers:
+        - env:
+            - name: DB_DATABASE
+              value: bookstack
+            - name: DB_HOST
+              value: mysql:3306
+            - name: DB_PASSWORD
+              value: secret
+            - name: DB_USERNAME
+              value: bookstack
+          image: solidnerd/bookstack:21.05.2
+          name: bookstack
+          ports:
+            - containerPort: 8080
+          resources: {}
+          volumeMounts:
+            - mountPath: /var/www/bookstack/public/uploads
+              name: uploads
+            - mountPath: /var/www/bookstack/storage/uploads
+              name: storage-uploads
+      restartPolicy: Always
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploads
+        - name: storage-uploads
+          persistentVolumeClaim:
+            claimName: storage-uploads
+status: {}

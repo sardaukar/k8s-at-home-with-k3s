@@ -1,0 +1,265 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: bookstack
+  name: bookstack
+spec:
+  ports:
+  - name: bookstack-port
+    port: 10000
+    targetPort: 8080
+  selector:
+    io.kompose.service: bookstack
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    io.kompose.service: bookstack-mysql
+  name: bookstack-mysql
+spec:
+  ports:
+  - name: bookstack-db-port
+    port: 10001
+    targetPort: 3306
+  selector:
+    io.kompose.service: bookstack-mysql
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    type: local
+  name: bookstack-storage-uploads-pv
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/zpool/volumes/bookstack/storage-uploads"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - k3s-vm
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    io.kompose.service: bookstack-storage-uploads-pvc
+  name: bookstack-storage-uploads-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-storage
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bookstack-uploads-pv
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/zpool/volumes/bookstack/uploads"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - k3s-vm
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    io.kompose.service: bookstack-uploads-pvc
+  name: bookstack-uploads-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-storage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bookstack-config
+  namespace: default
+data:
+  DB_DATABASE: bookstack
+  DB_HOST: bookstack-mysql:10001
+  DB_PASSWORD: secret
+  DB_USERNAME: bookstack
+  APP_URL: https://bookstack.domain.tld
+  MAIL_DRIVER: smtp
+  MAIL_ENCRYPTION: SSL
+  MAIL_FROM: user@domain.tld
+  MAIL_HOST: smtp.domain.tld
+  MAIL_PASSWORD: vewyvewysecretpassword
+  MAIL_PORT: "465"
+  MAIL_USERNAME: user@domain.tld
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: bookstack
+  name: bookstack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: bookstack
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: bookstack
+    spec:
+      securityContext:
+        runAsUser: 33
+        runAsGroup: 33
+      containers:
+      - name: bookstack
+        image: reddexx/bookstack:21112
+        securityContext:
+          allowPrivilegeEscalation: false
+        envFrom:
+        - configMapRef:
+            name: bookstack-config
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: bookstack-uploads-pv
+          mountPath: /var/www/bookstack/public/uploads
+        - name: bookstack-storage-uploads-pv
+          mountPath: /var/www/bookstack/storage/uploads
+      volumes:
+      - name: bookstack-uploads-pv
+        persistentVolumeClaim:
+          claimName: bookstack-uploads-pvc
+      - name: bookstack-storage-uploads-pv
+        persistentVolumeClaim:
+          claimName: bookstack-storage-uploads-pvc
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bookstack-mysql-data-pv
+  labels:
+    type: local
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/zpool/volumes/bookstack/mysql-data"
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - k3s-vm
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    io.kompose.service: bookstack-mysql-data-pvc
+  name: bookstack-mysql-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-storage
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    io.kompose.service: bookstack-mysql
+  name: bookstack-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: bookstack-mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        io.kompose.service: bookstack-mysql
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_DATABASE
+          value: bookstack
+        - name: MYSQL_PASSWORD
+          value: secret
+        - name: MYSQL_ROOT_PASSWORD
+          value: secret
+        - name: MYSQL_USER
+          value: bookstack
+        image: mysql:5.7.33
+        name: mysql
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: bookstack-mysql-data-pv
+      volumes:
+      - name: bookstack-mysql-data-pv
+        persistentVolumeClaim:
+          claimName: bookstack-mysql-data-pvc
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bookstack-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  rules:
+    - host: bookstack.domain.tld
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bookstack
+                port:
+                  name: bookstack-port
+  tls:
+    - hosts:
+      - bookstack.domain.tld
+      secretName: bookstack-staging-secret-tls

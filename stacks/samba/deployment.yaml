@@ -1,0 +1,64 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: smb-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smb-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      name: smb-server
+      labels:
+        app: smb-server
+    spec:
+      volumes:
+        - name: smb-volume
+          hostPath:
+            path: /zpool/shares/smb
+            type: DirectoryOrCreate
+      containers:
+        - name: smb-server
+          image: dperson/samba
+          args: [
+            "-u",
+            "$(USERNAME1);$(PASSWORD1)",
+            "-u",
+            "$(USERNAME2);$(PASSWORD2)",
+            "-s",
+            # share;path;browsable;ro;guest;users;admins;writelist;comment
+            "share;/smbshare/;yes;no;no;all;$(USERNAME1);;mainshare",
+            "-p"
+          ]
+          env:
+            - name: PERMISSIONS
+              value: "0777"
+            - name: USERNAME1
+              valueFrom:
+                secretKeyRef:
+                  name: smbcredentials
+                  key: username1
+            - name: PASSWORD1
+              valueFrom:
+                secretKeyRef:
+                  name: smbcredentials
+                  key: password1
+            - name: USERNAME2
+              valueFrom:
+                secretKeyRef:
+                  name: smbcredentials
+                  key: username2
+            - name: PASSWORD2
+              valueFrom:
+                secretKeyRef:
+                  name: smbcredentials
+                  key: password2
+          volumeMounts:
+            - mountPath: /smbshare
+              name: smb-volume
+          ports:
+            - containerPort: 445
+              hostPort: 445
