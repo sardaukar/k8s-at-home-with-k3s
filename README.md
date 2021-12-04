@@ -25,7 +25,7 @@ Host k3s
     Hostname 192.168.1.60
 ```
 
-If you use a different name for your server, edit `HOST` on the Makefile and the hostname condition in the `nodeAffinity` statements for Bookstack and Portainer
+If you use a different name for your server, edit `HOST` on the Makefile and the hostname condition in the `nodeAffinity` statements for Bookstack and Portainer.
 
 ## Steps
 
