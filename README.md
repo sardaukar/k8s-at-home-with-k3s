@@ -29,13 +29,13 @@ If you use a different name for your server, edit `HOST` on the Makefile and the
 
 ## Steps
 
-1. Forward the following TCP ports to your server's IP:
+1. Forward the following ports to your server's IP:
 
-- 22/ssh
-- 80/http
-- 443/https
-- 6443/k8s
-- 10250/kubelet
+- 22/TCP ssh
+- 80/TCP http
+- 443/TCP https
+- 6443/TCP k8s API
+- 10250/UDP kubelet
 
 2. Point your domain name to your _external_ IP with both `domain` and `*.domain` A records (or AAAA for IPv6)
 
