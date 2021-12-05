@@ -53,9 +53,9 @@ Feedback and pull requests welcome!
 
 To-do list:
 
-- unite `bookstack` and `bookstack-mysql` into single service
-- find a better way than using `nodeAffinity` for the PV provisioning
-- find a better way to specify the mysql port in the configmap for Bookstack other than literally using `10001`
+- [x] unite `bookstack` and `bookstack-mysql` into single service
+- [x] find a better way than using `nodeAffinity` for the PV provisioning
+- [ ] find a better way to specify the mysql port in the configmap for Bookstack other than literally using `10001`
 
 
 [the blog post about k3s at home]: https://blog.nootch.net/post/kubernetes-at-home-with-k3s/

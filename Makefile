@@ -9,7 +9,7 @@ KUBECTL=kubectl --kubeconfig ~/.kube/k3s-vm-config
 .PHONY: k3s_install base bookstack portainer samba
 
 k3s_install:
-	ssh ${HOST} 'export INSTALL_K3S_EXEC=" --no-deploy servicelb --no-deploy traefik --no-deploy local-storage"; \
+	ssh ${HOST} 'export INSTALL_K3S_EXEC=" --no-deploy servicelb --no-deploy traefik"; \
 		curl -sfL https://get.k3s.io | sh -'
 	scp ${HOST}:/etc/rancher/k3s/k3s.yaml .
 	sed -r 's/(\b[0-9]{1,3}\.){3}[0-9]{1,3}\b'/"${HOST_IP}"/ k3s.yaml > ~/.kube/k3s-vm-config && rm k3s.yaml
@@ -33,10 +33,9 @@ bookstack:
 	@echo
 	@echo "waiting for deployments to be ready... "
 	@${KUBECTL} wait --namespace=default --for=condition=available deployments/bookstack --timeout=60s
-	@${KUBECTL} wait --namespace=default --for=condition=available deployments/bookstack-mysql --timeout=60s
 	@echo
-	ssh ${HOST} chown 33:33 /zpool/volumes/bookstack/storage-uploads/
-	ssh ${HOST} chown 33:33 /zpool/volumes/bookstack/uploads/
+	ssh ${HOST} chmod 777 /zpool/volumes/bookstack/storage-uploads/
+	ssh ${HOST} chmod 777 /zpool/volumes/bookstack/uploads/
 
 portainer:
 	${KUBECTL} apply -k stacks/portainer
