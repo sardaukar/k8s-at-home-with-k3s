@@ -21,7 +21,6 @@ base:
             --selector=app.kubernetes.io/component=controller \
             --timeout=60s
 	${KUBECTL} apply -f k8s/cert-manager-v1.0.4.yaml
-	${KUBECTL} apply -f stacks/default-storage-class.yaml
 	@echo
 	@echo "waiting for cert-manager pods to be ready... "
 	${KUBECTL} wait --namespace=cert-manager --for=condition=ready pod --all --timeout=60s
